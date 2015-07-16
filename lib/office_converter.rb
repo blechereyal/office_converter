@@ -1,17 +1,24 @@
 require "office_converter/version"
+require "uri"
+require "net/http"
+require "tmpdir"
+require "spoon"
 
 module OfficeConverter
-  def self.convert(source, target, soffice_command = nil, convert_to = nil)
-    Converter.new(source, target, soffice_command, convert_to).convert
+=begin
+  source -> .docx file to be converted
+  target_dir -> directory where file will pe persisted
+=end
+  def self.convert(source, target_dir, soffice_command = nil, convert_to = nil)
+    Converter.new(source, target_dir, soffice_command, convert_to).convert
   end
 
   class Converter
     attr_accessor :soffice_command
 
-    def initialize(source, target, soffice_command = nil, convert_to = nil)
+    def initialize(source, target_dir, soffice_command = nil, convert_to = nil)
       @source = source
-      @target = target
-      @target_path = Dir.tmpdir
+      @target_dir = target_dir
       @soffice_command = soffice_command
       @convert_to = convert_to || "pdf"
       determine_soffice_command
@@ -23,13 +30,12 @@ module OfficeConverter
     end
 
     def convert
+      # puts ["HOME=/tmp", @soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_dir].join(' ')
       orig_stdout = $stdout.clone
       $stdout.reopen File.new('/dev/null', 'w')
-      pid = Spoon.spawnp("HOME=/tmp", @soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_path)
+      pid = Spoon.spawnp(@soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_dir)
       Process.waitpid(pid)
       $stdout.reopen orig_stdout
-      target_tmp_file = "#{@target_path}/#{File.basename(@source, ".*")}.#{File.basename(@convert_to, ":*")}"
-      FileUtils.cp target_tmp_file, @target
     end
 
     private
@@ -55,8 +61,6 @@ module OfficeConverter
 
     def check_source_type
       return if File.exists?(@source) && !File.directory?(@source) #file
-      return if URI(@source).scheme == "http" && Net::HTTP.get_response(URI(@source)).is_a?(Net::HTTPSuccess) #http
-      return if URI(@source).scheme == "https" && Net::HTTP.get_response(URI(@source)).is_a?(Net::HTTPSuccess) #https
       raise IOError, "Source (#{@source}) is neither a file nor an URL."
     end
   end
