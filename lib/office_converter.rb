@@ -33,7 +33,7 @@ module OfficeConverter
       # puts ["HOME=/tmp", @soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_dir].join(' ')
       orig_stdout = $stdout.clone
       $stdout.reopen File.new('/dev/null', 'w')
-      pid = Spoon.spawnp(@soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_dir)
+      pid = Spoon.spawnp("HOME=/tmp",@soffice_command, "--headless", "--convert-to", @convert_to, @source, "--outdir", @target_dir)
       Process.waitpid(pid)
       $stdout.reopen orig_stdout
     end
